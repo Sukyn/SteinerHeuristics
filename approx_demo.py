@@ -48,7 +48,21 @@ def eval_sol(graph,terms,sol):
 
     return cost
 
+# give the value of a solution with a list of vertices
+def eval_sol_sommet(graph, sol):
+    nodes = []
+    res = 0
 
+    for i in range(len(sol)) :
+        if sol[i]==1 :
+            nodes.append(i+1)
+    my_graph = graph.subgraph(nodes)
+
+    nb_conn = nx.number_connected_components(my_graph)
+    if(nb_conn>1) :
+        res = sum([graph[u][v]['weight'] for (u,v) in graph.edges()])
+    my_graph = nx.minimum_spanning_tree(my_graph)
+    return res + my_graph.size(weight='weight')
 
 # compute a approximate solution to the steiner problem
 def approx_steiner(graph,terms):
@@ -92,8 +106,6 @@ def approx_steiner(graph,terms):
             k_dep = k
     return res
 
-
-
 # class used to read a steinlib instance
 class MySteinlibInstance(SteinlibInstance):
 
@@ -124,9 +136,8 @@ def eval_sol_bis(graph,terms,sol):
             graph_sol.add_edge(i,j,
                                weight=graph[i][j]['weight'])
 
-    # is sol a tree
-    if (not (nx.is_tree(graph_sol))):
-        cost += 100000
+
+    cost += 1000*(nx.number_connected_components(graph_sol)-1)
     # are the terminals covered
     for i in terms:
         if not i in graph_sol:
@@ -143,7 +154,7 @@ def cuit():
 def recuit(graph, terms, temperature=1, nb_iter=1000):
     seuil = temperature/nb_iter
     # Solution sur laquelle on travaille
-    our_sol = init_sol(graph,terms, random=True)
+    our_sol = init_sol(graph,terms, random=False)
     # Poids de cette solution
     our_cost = eval_sol_bis(graph,terms,our_sol)
     # Meilleur poids de solution trouvé
@@ -163,7 +174,7 @@ def recuit(graph, terms, temperature=1, nb_iter=1000):
             if (cost < best_cost):
                 best_cost = cost
                 best_sol = current_sol.copy()
-            our_sol = current_sol
+            our_sol = current_sol.copy()
             our_cost = cost
         # probas
         else:
@@ -171,7 +182,7 @@ def recuit(graph, terms, temperature=1, nb_iter=1000):
             print(proba)
             rand = np.random.uniform()
             if (rand <= proba):
-                our_sol = current_sol
+                our_sol = current_sol.copy()
                 our_cost = cost
         temperature -= seuil
         print(best_cost, our_cost, cost)
@@ -179,10 +190,32 @@ def recuit(graph, terms, temperature=1, nb_iter=1000):
 
     return best_cost, best_sol
 
+def combination(sol1, sol2):
+    n = np.random.randint(1, len(sol1))
+    res = sol1.copy()[0:n]
+    res2 = sol2.copy()[n: len(sol1)]
+    res = np.append(res, res2)
+    return res
+
+def algo_genetique(graph, terms, nb_enfants = 10, nb_iter = 2000):
+    population = [init_sol(graph, terms, random=True) for i in range(nb_enfants)]
+    #population.append(init_sol(graph,terms,random=False))
+    #scores = [eval_sol_bis(boy) for boy in population]
+    for i in range(nb_iter):
+        for j in range(nb_enfants):
+            population.append(combination(population[j], population[(j+1)%nb_enfants]))
+        for k in range(nb_enfants):
+            population.append(voisinage(population[k]))
+        population = sorted(population, key=lambda x: eval_sol_bis(graph, terms, x))
+        population = population[0:nb_enfants]
+        print(eval_sol_bis(graph, terms, population[0]))
+    return population[0], eval_sol_bis(graph, terms, population[0])
+
+
 def init_sol(my_graph, terms, random=False):
 
     if (random) :
-        return np.random.choice(a=[0, 1], size=(len(my_graph.edges()), 1))
+        return np.random.randint(2, size=(len(my_graph.edges())))
     else:
         vals = np.zeros(len(my_graph.edges()))
 
@@ -198,16 +231,32 @@ def init_sol(my_graph, terms, random=False):
                 vals[list(my_graph.edges()).index((k,j))] = 1
         #print(vals)
         return vals
+"""
+def init_sol_sommet(my_graph, terms, random=false):
+    if(random) :
+        np.random.randint(2, size=(len(my_graph)))
+
+"""
 
 def voisinage(sol):
+    n = np.random.randint(0, len(sol))
+    sol2 = sol.copy()
+    sol2[n] = (sol2[n]+1)%2
+    return sol2
+    '''
     sol2 = sol.copy()
     for i in range(len(sol)):
         n = np.random.random()
-        if (0.1 > n):
+        if (0.01 > n):
             sol2[i] = (sol[i]+1)%2
-
-
     return sol2
+    '''
+
+
+
+
+
+
 
 if __name__ == "__main__":
     start = time.perf_counter()
@@ -228,9 +277,10 @@ if __name__ == "__main__":
         # évaluation de la solution
         print(eval_sol(graph,terms,sol))
 
+        print(algo_genetique(graph, terms))
 
-        cost, sol2 = recuit(graph, terms, temperature=250, nb_iter=50000)
-        print("Notre maxi résultat")
-        print(cost, sol2)
+        #cost, sol2 = recuit(graph, terms, temperature=10, nb_iter=20000)
+        #print("Notre maxi résultat")
+        #print(cost, sol2)
         end = time.perf_counter()
         print(end - start)
