@@ -147,11 +147,17 @@ def eval_sol_bis(graph,terms,sol):
     return cost
 
 
+def combination(sol1, sol2):
+    n = np.random.randint(1, len(sol1))
+    res = sol1.copy()[0:n]
+    res2 = sol2.copy()[n: len(sol1)]
+    res = np.append(res, res2)
+    return res.tolist()
 
 def cuit():
     pass
 
-def recuit(graph, terms, temperature=1, nb_iter=1000):
+def algo_recuit(graph, terms, temperature=1, nb_iter=1000):
     seuil = temperature/nb_iter
     # Solution sur laquelle on travaille
     our_sol = init_sol(graph,terms, random=True)
@@ -190,7 +196,7 @@ def recuit(graph, terms, temperature=1, nb_iter=1000):
 
     return best_cost, best_sol
 
-def recuit_sommet(graph, terms, temperature=1, nb_iter=1000):
+def algo_recuit_sommet(graph, terms, temperature=1, nb_iter=1000):
     seuil = temperature/nb_iter
     # Solution sur laquelle on travaille
     our_sol = init_sol_sommet(graph,terms, random=True)
@@ -229,12 +235,6 @@ def recuit_sommet(graph, terms, temperature=1, nb_iter=1000):
 
     return best_cost, best_sol
 
-def combination(sol1, sol2):
-    n = np.random.randint(1, len(sol1))
-    res = sol1.copy()[0:n]
-    res2 = sol2.copy()[n: len(sol1)]
-    res = np.append(res, res2)
-    return res.tolist()
 
 def algo_genetique(graph, terms, nb_enfants = 16, nb_iter = 2000):
     population = [init_sol(graph, terms, random=True) for i in range(nb_enfants)]
@@ -263,6 +263,39 @@ def algo_genetique(graph, terms, nb_enfants = 16, nb_iter = 2000):
         population = temp
         print(eval_sol_bis(graph, terms, population[0]))
     return population[0], eval_sol_bis(graph, terms, population[0])
+
+def algo_tabu(graph, terms, nb_iter=2000):
+    current_sol = init_sol(graph,terms, random=True)
+    tabu_list = []
+    tabu_list.append(current_sol)
+    # Poids de cette solution
+    current_cost = eval_sol_bis(graph,terms,current_sol)
+    # Meilleur poids de solution trouvé
+    best_cost = current_cost
+    # Meilleure solution trouvée
+    best_sol = current_sol.copy()
+    sk = current_sol.copy()
+    k = 0
+    while (k < nb_iter):
+        flag = True
+        while (flag):
+            new_sol = voisinage(sk)
+            if (new_sol not in tabu_list):
+                flag = False
+        new_cost = eval_sol_bis(graph,terms,new_sol)
+        if (new_cost < best_cost):
+            best_sol = new_sol.copy()
+            best_cost = new_cost
+        if (best_cost < current_cost):
+            current_sol = best_sol.copy()
+            current_cost = best_cost
+        k += 1
+        sk = best_sol.copy()
+        tabu_list.append(current_sol)
+        if (len(tabu_list) > 200):
+            tabu_list.pop(0)
+        print(current_cost)
+    return current_sol, current_cost
 
 def init_sol(my_graph, terms, random=False):
 
@@ -331,12 +364,12 @@ if __name__ == "__main__":
         # évaluation de la solution
         print(eval_sol(graph,terms,sol))
 
-        #print(algo_genetique(graph, terms))
+        print(algo_tabu(graph, terms, nb_iter=10000))
 
-        cost, sol2 = recuit(graph, terms, temperature=10, nb_iter=20000)
-        print(cost, sol2)
-        cost, sol2 = recuit_sommet(graph, terms, temperature=10, nb_iter=10000)
+        #cost, sol2 = recuit(graph, terms, temperature=10, nb_iter=20000)
+        #print(cost, sol2)
+        #cost, sol2 = recuit_sommet(graph, terms, temperature=10, nb_iter=10000)
         #print("Notre maxi résultat")
-        print(cost, sol2)
+        #print(cost, sol2)
         end = time.perf_counter()
         print(end - start)
