@@ -7,7 +7,7 @@ from steinlib.parser import SteinlibParser
 import time
 import numpy as np
 
-stein_file = "data/B/b04.stp"
+stein_file = "data/B/b02.stp"
 #stein_file = "data/test.std"
 
 
@@ -195,27 +195,40 @@ def combination(sol1, sol2):
     res = sol1.copy()[0:n]
     res2 = sol2.copy()[n: len(sol1)]
     res = np.append(res, res2)
-    return res
+    return res.tolist()
 
-def algo_genetique(graph, terms, nb_enfants = 10, nb_iter = 2000):
+def algo_genetique(graph, terms, nb_enfants = 16, nb_iter = 2000):
     population = [init_sol(graph, terms, random=True) for i in range(nb_enfants)]
     #population.append(init_sol(graph,terms,random=False))
     #scores = [eval_sol_bis(boy) for boy in population]
     for i in range(nb_iter):
-        for j in range(nb_enfants):
-            population.append(combination(population[j], population[(j+1)%nb_enfants]))
-        for k in range(nb_enfants):
-            population.append(voisinage(population[k]))
+        j = 0
+        k = 0
+        while (j < nb_enfants):
+            n = np.random.randint(nb_enfants)
+            m = np.random.randint(nb_enfants)
+            comb = combination(population[n], population[m])
+            if (comb not in population):
+                population.append(comb)
+                j += 1
+        while (k < nb_enfants):
+            voisin = voisinage(population[np.random.randint(nb_enfants/2)])
+            if (voisin not in population):
+                population.append(voisin)
+                k += 1
         population = sorted(population, key=lambda x: eval_sol_bis(graph, terms, x))
-        population = population[0:nb_enfants]
+        temp = population.copy()[0:int(nb_enfants/2)]
+        for n in range(int(nb_enfants/2)):
+            s = np.random.randint(nb_enfants/2, nb_enfants*3)
+            temp.append(population[s])
+        population = temp
         print(eval_sol_bis(graph, terms, population[0]))
     return population[0], eval_sol_bis(graph, terms, population[0])
-
 
 def init_sol(my_graph, terms, random=False):
 
     if (random) :
-        return np.random.randint(2, size=(len(my_graph.edges())))
+        return np.random.randint(2, size=(len(my_graph.edges()))).tolist()
     else:
         vals = np.zeros(len(my_graph.edges()))
 
