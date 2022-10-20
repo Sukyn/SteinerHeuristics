@@ -157,8 +157,13 @@ def combination(sol1, sol2):
 def cuit():
     pass
 
-def algo_recuit(graph, terms, temperature=1, nb_iter=1000):
-    seuil = temperature/nb_iter
+def algo_recuit(graph, terms, temperature=1, nb_iter=1000, type="linear", nb_slices = 10):
+    if (type == "linear"):
+        seuil = temperature/nb_iter
+        limit = 0
+    elif (type == "exponential"):
+        limit = temperature*np.power(0.999, nb_iter)
+    #print(limit)
     # Solution sur laquelle on travaille
     our_sol = init_sol(graph,terms, random=True)
     # Poids de cette solution
@@ -167,7 +172,9 @@ def algo_recuit(graph, terms, temperature=1, nb_iter=1000):
     best_cost = our_cost
     # Meilleure solution trouvée
     best_sol = our_sol.copy()
-    while temperature > 0 :
+    i = 0
+    slices = []
+    while temperature > limit :
         # Fonction de voisinage -> On modifie
         current_sol = voisinage(our_sol)
         # Nouveaux poids
@@ -190,11 +197,17 @@ def algo_recuit(graph, terms, temperature=1, nb_iter=1000):
             if (rand <= proba):
                 our_sol = current_sol.copy()
                 our_cost = cost
-        temperature -= seuil
+        if (type == "linear"):
+            temperature -= seuil
+        elif (type == "exponential"):
+            temperature *= 0.999
         #print(best_cost, our_cost, cost)
 
+        i += 1
+        if (i%nb_iter/nb_slices == 0):
+            slices.append(best_cost)
 
-    return best_cost, best_sol
+    return best_cost, best_sol, slices
 
 def algo_recuit_sommet(graph, terms, temperature=1, nb_iter=1000):
     seuil = temperature/nb_iter
@@ -364,9 +377,9 @@ if __name__ == "__main__":
         # évaluation de la solution
         print(eval_sol(graph,terms,sol))
 
-        print(algo_tabu(graph, terms, nb_iter=10000))
+        #print(algo_tabu(graph, terms, nb_iter=10000))
 
-        #cost, sol2 = recuit(graph, terms, temperature=10, nb_iter=20000)
+        cost, sol2, slices = algo_recuit(graph, terms, temperature=10, nb_iter=20000, type="exponential")
         #print(cost, sol2)
         #cost, sol2 = recuit_sommet(graph, terms, temperature=10, nb_iter=10000)
         #print("Notre maxi résultat")
