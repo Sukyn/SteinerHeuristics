@@ -7,7 +7,7 @@ from steinlib.parser import SteinlibParser
 import time
 import numpy as np
 
-stein_file = "data/B/b04.stp"
+stein_file = "data/B/b02.stp"
 #stein_file = "data/test.std"
 
 
@@ -154,7 +154,7 @@ def cuit():
 def recuit(graph, terms, temperature=1, nb_iter=1000):
     seuil = temperature/nb_iter
     # Solution sur laquelle on travaille
-    our_sol = init_sol(graph,terms, random=False)
+    our_sol = init_sol(graph,terms, random=True)
     # Poids de cette solution
     our_cost = eval_sol_bis(graph,terms,our_sol)
     # Meilleur poids de solution trouvé
@@ -179,13 +179,52 @@ def recuit(graph, terms, temperature=1, nb_iter=1000):
         # probas
         else:
             proba = np.exp(-(cost-our_cost)/temperature)
-            print(proba)
+            #print(proba)
             rand = np.random.uniform()
             if (rand <= proba):
                 our_sol = current_sol.copy()
                 our_cost = cost
         temperature -= seuil
-        print(best_cost, our_cost, cost)
+        #print(best_cost, our_cost, cost)
+
+
+    return best_cost, best_sol
+
+def recuit_sommet(graph, terms, temperature=1, nb_iter=1000):
+    seuil = temperature/nb_iter
+    # Solution sur laquelle on travaille
+    our_sol = init_sol_sommet(graph,terms, random=True)
+    # Poids de cette solution
+    our_cost = eval_sol_sommet(graph,our_sol)
+    # Meilleur poids de solution trouvé
+    best_cost = our_cost
+    # Meilleure solution trouvée
+    best_sol = our_sol.copy()
+    while temperature > 0 :
+        # Fonction de voisinage -> On modifie
+        current_sol = voisinage_sommet(our_sol,terms)
+        # Nouveaux poids
+        cost = eval_sol_sommet(graph,current_sol)
+        # Si il est mieux on le sauvegarde
+
+        # meilleur local
+        if (cost <= our_cost):
+            # meilleur absolu
+            if (cost < best_cost):
+                best_cost = cost
+                best_sol = current_sol.copy()
+            our_sol = current_sol.copy()
+            our_cost = cost
+        # probas
+        else:
+            proba = np.exp(-(cost-our_cost)/temperature)
+            #print(proba)
+            rand = np.random.uniform()
+            if (rand <= proba):
+                our_sol = current_sol.copy()
+                our_cost = cost
+        temperature -= seuil
+        #print(best_cost, our_cost, cost)
 
 
     return best_cost, best_sol
@@ -231,12 +270,13 @@ def init_sol(my_graph, terms, random=False):
                 vals[list(my_graph.edges()).index((k,j))] = 1
         #print(vals)
         return vals
-"""
-def init_sol_sommet(my_graph, terms, random=false):
-    if(random) :
-        np.random.randint(2, size=(len(my_graph)))
 
-"""
+def init_sol_sommet(my_graph, terms, random=False):
+    #if(random) :
+    sol = np.random.randint(2, size=(len(my_graph)))
+    for n in terms:
+        sol[n-1]=1
+    return sol
 
 def voisinage(sol):
     n = np.random.randint(0, len(sol))
@@ -252,11 +292,12 @@ def voisinage(sol):
     return sol2
     '''
 
-
-
-
-
-
+def voisinage_sommet(sol,terms):
+    n = np.random.randint(0, len(sol))
+    sol2 = sol.copy()
+    if ((n+1) not in terms):
+        sol2[n] = (sol2[n]+1)%2
+    return sol2
 
 if __name__ == "__main__":
     start = time.perf_counter()
@@ -277,10 +318,12 @@ if __name__ == "__main__":
         # évaluation de la solution
         print(eval_sol(graph,terms,sol))
 
-        print(algo_genetique(graph, terms))
+        #print(algo_genetique(graph, terms))
 
-        #cost, sol2 = recuit(graph, terms, temperature=10, nb_iter=20000)
+        cost, sol2 = recuit(graph, terms, temperature=10, nb_iter=20000)
+        print(cost, sol2)
+        cost, sol2 = recuit_sommet(graph, terms, temperature=10, nb_iter=10000)
         #print("Notre maxi résultat")
-        #print(cost, sol2)
+        print(cost, sol2)
         end = time.perf_counter()
         print(end - start)
