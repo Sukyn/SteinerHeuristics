@@ -16,34 +16,37 @@ if __name__ == "__main__":
         # le graphe
         graph = my_class.my_graph
 
+    for type_temp in ["linear", "exponential"]:
+        for T in [0.1,1,10,100]:
+            print("Début tempétature " + str(T))
+            nb_test = 10
+            nb_iter = 1000
+            slices= 20
 
-    for T in [0.1,1,10,100]:
-        print("Début tempétature " + str(T))
-        nb_test = 10
-        nb_iter = 1000
-        slices= 10
-
-        pas = nb_iter/slices
+            pas = nb_iter/slices
         
-        res = []
+            res = [[] for i in range(slices)]
         
-        moy = [0 for i in range(slices)]
+            moy = [0 for i in range(slices)]
 
-        for j in range(nb_test):
-            sol_v,sol,list_sol = apr.recuit(graph,terms, T, nb_iter, slices)
-            res.append(list_sol)
-            for i in range(slices):
-                moy[i] += list_sol[i]
+            for j in range(nb_test):
+                print("test " + str(j))
+                #sol_v,sol,list_sol = apr.algo_recuit(graph,terms, temperature=T, \
+                sol_v,sol,list_sol = apr.algo_recuit_sommet(graph,terms, temperature=T, \
+                    nb_iter=nb_iter, type=type_temp ,nb_slices=slices)
+                for i in range(slices):
+                    moy[i] += list_sol[i]
+                    res[i].append(list_sol[i])
     
-        moy = [i/nb_test for i in moy]
-        inter = []
-        for i in range(number):
-            et = stat.stdev(res[i])
-            alpha = 2*et/math.sqrt(nb_test)
-            inter.append(alpha)
+            moy = [i/nb_test for i in moy]
+            inter = []
+            for i in range(slices):
+                et = stat.stdev(res[i])
+                alpha = 2*et/math.sqrt(nb_test)
+                inter.append(alpha)
 
-        plt_x = [(i+1)*pas for i in range(slices)]
-        plt.errorbar(plt_x,moy,yerr = inter, label="Temp = " + str(T))
+            plt_x = [(i+1)*pas for i in range(slices)]
+            plt.errorbar(plt_x,moy,yerr = inter, label="Temp = " + str(T) + " - type = " + type_temp)
     tmp_tab = [apr.eval_sol(graph,terms, apr.approx_steiner(graph,terms)) for i in range(len(plt_x))]
     plt.plot(plt_x, tmp_tab, label = "approx")
     plt.xlabel("Nombre d'itérations")
