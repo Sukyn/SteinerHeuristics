@@ -7,7 +7,7 @@ from steinlib.parser import SteinlibParser
 import time
 import numpy as np
 
-stein_file = "data/B/b02.stp"
+# stein_file = "data/B/b02.stp"
 # stein_file = "data/test.std"
 
 
@@ -202,7 +202,7 @@ def algo_recuit(graph, terms, temperature=1, nb_iter=1000,
         i += 1
         if (i % (nb_iter/nb_slices) == 0):
             slices.append(best_cost)
-            print("Actual best :", best_cost)
+            #print("Current best :", best_cost)
 
     return best_cost, best_sol, slices
 
@@ -254,7 +254,64 @@ def algo_recuit_sommet(graph, terms, temperature=1, nb_iter=1000,
         i += 1
         if (i % (nb_iter/nb_slices) == 0):
             slices.append(best_cost)
-            print("Actual best :", best_cost)
+            # print("Current best :", best_cost)
+
+    return best_cost, best_sol, slices
+
+
+
+def algo_recuit_sommet_tabu(graph, terms, temperature=1, nb_iter=1000,
+                            type="linear", nb_slices=10):
+    if (type == "linear"):
+        seuil = temperature/nb_iter
+        limit = 0
+    elif (type == "exponential"):
+        limit = temperature*np.power(0.999, nb_iter)
+    # Solution sur laquelle on travaille
+    our_sol = init_sol_sommet(graph, terms, random=True)
+    # Poids de cette solution
+    our_cost = eval_sol_sommet(graph, terms, our_sol)
+    # Meilleur poids de solution trouvé
+    best_cost = our_cost
+    # Meilleure solution trouvée
+    best_sol = our_sol.copy()
+    tabu_list = [our_sol]
+    i = 0
+    slices = []
+    while temperature > limit:
+        # Fonction de voisinage -> On modifie
+        current_sol = voisinage_sommet(our_sol, terms)
+        # Nouveaux poids
+        cost = eval_sol_sommet(graph, terms, current_sol)
+        # Si il est mieux on le sauvegarde
+
+        # meilleur local
+        if (cost <= our_cost):
+            # meilleur absolu
+            if (cost < best_cost):
+                best_cost = cost
+                best_sol = current_sol.copy()
+            our_sol = current_sol.copy()
+            our_cost = cost
+        # probas
+        else:
+            proba = np.exp(-(cost-our_cost)/temperature)
+            rand = np.random.uniform()
+            if (rand <= proba):
+                our_sol = current_sol.copy()
+                our_cost = cost
+        tabu_list.append(current_sol)
+        if (len(tabu_list) > 50):
+            tabu_list.pop(0)
+        if (type == "linear"):
+            temperature -= seuil
+        elif (type == "exponential"):
+            temperature *= 0.999
+
+        i += 1
+        if (i % (nb_iter/nb_slices) == 0):
+            slices.append(best_cost)
+            # print("Current best :", best_cost)
 
     return best_cost, best_sol, slices
 
@@ -290,39 +347,40 @@ def algo_genetique(graph, terms, nb_enfants=16, nb_iter=2000, nb_slices=10):
         if (i % (nb_iter/nb_slices) == 0):
             best_cost = eval_sol_bis(graph, terms, population[0])
             slices.append(best_cost)
-            print("Actual best :", best_cost)
+            # print("Current best :", best_cost)
 
     return eval_sol_bis(graph, terms, population[0]), population[0], slices
 
 
 def algo_tabu(graph, terms, nb_iter=2000, nb_slices=10):
-    new_sol = init_sol(graph, terms, random=True)
-    tabu_list = []
-    tabu_list.append(new_sol)
+    sol = init_sol(graph, terms, random=True)
+    tabu_list = [sol]
     # Poids de cette solution
-    new_cost = eval_sol_bis(graph, terms, new_sol)
+    cost = eval_sol_bis(graph, terms, sol)
     # Meilleur poids de solution trouvé
-    best_cost = new_cost
+    best_cost = cost
     # Meilleure solution trouvée
-    best_sol = new_sol.copy()
-    sk = new_sol.copy()
+    best_sol = sol.copy()
     k = 0
     slices = []
     i = 0
     while (k < nb_iter):
         flag = True
         while (flag):
-            new_sol = voisinage(sk)
-            if (new_sol not in tabu_list):
+            sol = voisinage(best_sol)
+            if (sol not in tabu_list):
                 flag = False
-        new_cost = eval_sol_bis(graph, terms, new_sol)
-        if (new_cost < best_cost):
-            best_sol = new_sol.copy()
-            best_cost = new_cost
+        cost = eval_sol_sommet(graph, terms, sol)
+        # Si il est mieux on le sauvegarde
+
+        # meilleur absolu
+        if (cost < best_cost):
+            best_cost = cost
+            best_sol = sol.copy()
+        else:
+            tabu_list.append(sol)
         k += 1
-        sk = new_sol.copy()
-        tabu_list.append(new_sol)
-        if (len(tabu_list) > 2000):
+        if (len(tabu_list) > 50):
             tabu_list.pop(0)
         i += 1
         if (i % (nb_iter/nb_slices) == 0):
@@ -385,58 +443,71 @@ def voisinage_sommet(sol, terms):
 
 if __name__ == "__main__":
     start = time.perf_counter()
-    my_class = MySteinlibInstance()
-    with open(stein_file) as my_file:
-        my_parser = SteinlibParser(my_file, my_class)
-        my_parser.parse()
-        # terminaux
-        terms = my_class.terms
-        print(terms)
-        # le graphe
-        graph = my_class.my_graph
-        # print_graph(graph,terms)
 
-        # notre solution steiner approx
-        sol = approx_steiner(graph, terms)
-        # print_graph(graph,terms,sol)
+    for i in range(1, 19):
+        stein_file = ""
+        if i < 10:
+            stein_file = "data/B/b0" + str(i) + ".stp"
 
-        # évaluation de la solution
-        print("Approx steiner :", eval_sol(graph, terms, sol))
+        else:
+            stein_file = "data/B/b" + str(i) + ".stp"
 
-        '''
-        print("Lancement tabu")
-        cost, sol2, slices = algo_tabu(graph, terms, nb_iter=20000)
-        print("Algo tabu arêtes :", cost)
+        my_class = MySteinlibInstance()
 
-        print("Lancement algo génétique")
-        cost, sol2, slices = algo_genetique(graph, terms, nb_enfants=16,
-                                            nb_iter=10000)
-        print("Algo génétique :", cost)
+        with open(stein_file) as my_file:
+            my_parser = SteinlibParser(my_file, my_class)
+            my_parser.parse()
+            # terminaux
 
-        '''
+            terms = my_class.terms
+            # le graphe
+            graph = nx.Graph()
+            graph = my_class.my_graph
+            # notre solution steiner approx
+            sol = approx_steiner(graph, terms)
+            # print_graph(graph,terms,sol)
 
-        print("Lancement recuit arêtes exponential")
-        cost, sol2, slices = algo_recuit(graph, terms, temperature=10,
-                                         nb_iter=20000, type="exponential")
-        print("Algo recuit arêtes exponential :", cost)
+            # évaluation de la solution
+            print(stein_file, "Approx steiner :", eval_sol(graph, terms, sol))
 
-        print("Lancement recuit arêtes linear")
-        cost, sol2, slices = algo_recuit(graph, terms, temperature=10,
-                                         nb_iter=20000, type="linear")
-        print("Algo recuit arêtes linear :", cost)
+            '''
+            print("Lancement tabu")
+            cost, sol2, slices = algo_tabu(graph, terms, nb_iter=20000)
+            print("Algo tabu arêtes :", cost)
+
+            print("Lancement algo génétique")
+            cost, sol2, slices = algo_genetique(graph, terms, nb_enfants=16,
+                                                nb_iter=2000)
+            print("Algo génétique :", cost)
+
+            print("Lancement recuit arêtes exponential")
+            cost, sol2, slices = algo_recuit(graph, terms, temperature=10,
+                                             nb_iter=20000, type="exponential")
+            print("Algo recuit arêtes exponential :", cost)
+
+            print("Lancement recuit arêtes linear")
+            cost, sol2, slices = algo_recuit(graph, terms, temperature=10,
+                                             nb_iter=20000, type="linear")
+            print("Algo recuit arêtes linear :", cost)
+            '''
+
+            cost, sol2, slices = algo_recuit_sommet(graph, terms, temperature=10,
+                                                    nb_iter=8000,
+                                                    type="exponential")
+            print(stein_file, "Algo recuit sommets exp :", cost)
+
+            cost, sol2, slices = algo_recuit_sommet(graph, terms, temperature=10,
+                                                    nb_iter=8000,
+                                                    type="linear")
+            print(stein_file, "Algo recuit sommets lin :", cost)
 
 
-        print("Lancement recuit sommets exponential")
-        cost, sol2, slices = algo_recuit_sommet(graph, terms, temperature=10,
-                                                nb_iter=20000,
-                                                type="exponential")
-        print("Algo recuit sommets :", cost)
+            cost, sol2, slices = algo_recuit_sommet_tabu(graph, terms, temperature=10,
+                                                         nb_iter=8000, type="exponential")
+            print(stein_file, "Algo recuit sommets exp + tabu:", cost)
 
-        print("Lancement recuit sommets linear")
-        cost, sol2, slices = algo_recuit_sommet(graph, terms, temperature=10,
-                                                nb_iter=100000,
-                                                type="linear")
-        print("Algo recuit sommets :", cost)
+            end = time.perf_counter()
+            print(end - start)
 
-        end = time.perf_counter()
-        print(end - start)
+        terms.clear()
+        graph.clear()
