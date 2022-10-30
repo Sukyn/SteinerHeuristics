@@ -862,17 +862,17 @@ def voisinage_sommet(sol, terms):
 
 if __name__ == "__main__":
     start = time.perf_counter()
-    with open("results2.txt", "w", encoding="utf8") as file:
-        for i in range(1, 19):
+    with open("resultsC.txt", "w", encoding="utf8") as file:
+        for i in range(2,3):
             STEIN_FILE = ""
             if i < 10:
                 STEIN_FILE = "data/B/b0" + str(i) + ".stp"
             elif i < 19:
                 STEIN_FILE = "data/B/b" + str(i) + ".stp"
             elif i < 29:
-                STEIN_FILE = "data/C/c0" + str(i-18) + ".stp"
+                STEIN_FILE = "data/C/c0" + str(i-19) + ".stp"
             elif i < 39:
-                STEIN_FILE = "data/C/c" + str(i-18) + ".stp"
+                STEIN_FILE = "data/C/c" + str(i-19) + ".stp"
 
             my_class = MySteinlibInstance()
 
@@ -889,6 +889,7 @@ if __name__ == "__main__":
                 sol = approx_steiner(graph, terms)
                 # print_graph(graph,terms,sol)
 
+                '''
                 # évaluation de la solution
                 file.write(STEIN_FILE + " Approx steiner : " +
                            str(eval_sol(graph, terms, sol)) + "\n")
@@ -943,6 +944,91 @@ if __name__ == "__main__":
                 file.write(STEIN_FILE + " Algo recuit sommets exp + tabu: " +
                            str(cost) + " nb_iter = 20000, temperature = 10\n")
                 file.write('\n')
+                '''
+                slices = np.zeros(10)
+                results_recuit_aretes_lin = []
+                results_recuit_sommet_lin = []
+                results_recuit_aretes_exp = []
+                results_recuit_sommet_exp = []
+                results_recuit_sommet_tabu_lin = []
+                results_recuit_sommet_tabu_exp = []
+                iters = 10
+                nb_slices = 1000
+                for i in range(iters):
+                    cost, sol2, slices = algo_recuit(graph, terms, temperature=10,
+                                                     nb_iter=nb_slices, type="linear", nb_slices=nb_slices)
+                    results_recuit_aretes_lin.append(slices)
+                    cost, sol2, slices = algo_recuit(graph, terms, temperature=10,
+                                                     nb_iter=nb_slices, type="exponential", nb_slices=nb_slices)
+                    results_recuit_aretes_exp.append(slices)
+                    cost, sol2, slices = algo_recuit_sommet(graph, terms,
+                                                            temperature=10,
+                                                            nb_iter=nb_slices,
+                                                            type="exponential", nb_slices=nb_slices)
+                    results_recuit_sommet_exp.append(slices)
+                    cost, sol2, slices = algo_recuit_sommet(graph, terms,
+                                                            temperature=10,
+                                                            nb_iter=nb_slices,
+                                                            type="linear", nb_slices=nb_slices)
+                    results_recuit_sommet_lin.append(slices)
+                    cost, sol2, slices = algo_recuit_sommet_tabu(graph, terms,
+                                                                 temperature=10,
+                                                                 nb_iter=nb_slices,
+                                                                 type="linear", nb_slices=nb_slices)
+                    results_recuit_sommet_tabu_lin.append(slices)
+                    cost, sol2, slices = algo_recuit_sommet_tabu(graph, terms,
+                                                                 temperature=10,
+                                                                 nb_iter=nb_slices,
+                                                                 type="exponential", nb_slices=nb_slices)
+                    results_recuit_sommet_tabu_exp.append(slices)
+                    print("iter", i)
+
+
+                # Get all slices
+                tmp = [np.zeros(nb_slices),
+                       np.zeros(nb_slices),
+                       np.zeros(nb_slices),
+                       np.zeros(nb_slices),
+                       np.zeros(nb_slices),
+                       np.zeros(nb_slices)]
+
+                for i in range(iters):
+                    for j in range(nb_slices):
+                        tmp[0][j] += results_recuit_aretes_exp[i][j]
+                        tmp[1][j] += results_recuit_aretes_lin[i][j]
+                        tmp[2][j] += results_recuit_sommet_lin[i][j]
+                        tmp[3][j] += results_recuit_sommet_exp[i][j]
+                        tmp[4][j] += results_recuit_sommet_tabu_lin[i][j]
+                        tmp[5][j] += results_recuit_sommet_tabu_exp[i][j]
+
+                # Compute the mean value
+                for i in range(6):
+                    for j in range(nb_slices):
+                        tmp[i][j] = tmp[i][j]/iters
+                    tmp[i] = tmp[i][int(nb_slices/5)::]
+
+                x = np.arange(nb_slices/5, nb_slices)
+                for i in range(6):
+                    fig = plt.figure()
+                    plt.plot(x, tmp[i])
+                    plt.plot(x, np.full(int(4*nb_slices/5), eval_sol(graph, terms, sol)), color='green')
+                    plt.legend(['Our result', 'Approx'], loc ="upper right")
+                    if i==0:
+                        plt.title("Recuit arêtes exponential")
+                    elif i==1:
+                        plt.title("Recuit arêtes linear")
+                    elif i==2:
+                        plt.title("Recuit sommets linear")
+                    elif i==3:
+                        plt.title("Recuit sommets exponential")
+                    elif i==4:
+                        plt.title("Recuit sommets + tabu linear")
+                    elif i==5:
+                        plt.title("Recuit sommets + tabu exponential")
+                    plt.xlabel('Nombre itérations')
+                    plt.ylabel('Resultat')
+                    fig.savefig("fig"+str(i)+'.png')
+
                 end = time.perf_counter()
                 print(STEIN_FILE, end - start)
 
