@@ -548,8 +548,7 @@ def algo_genetique(graph, terms, nb_enfants=16, nb_iter=2000, nb_slices=10):
 
         # We sort the population : the first element of population
         #                          is our current best solution
-        popu = sorted(popu,
-                            key=lambda x: eval_sol_bis(graph, terms, x))
+        popu = sorted(popu, key=lambda x: eval_sol_bis(graph, terms, x))
 
         # We keep the best ones
         temp = popu.copy()[0:int(nb_enfants/2)]
@@ -557,15 +556,17 @@ def algo_genetique(graph, terms, nb_enfants=16, nb_iter=2000, nb_slices=10):
         for _ in range(int(nb_enfants/2)):
             temp.append(popu[np.random.randint(nb_enfants/2, nb_enfants*3)])
         # and we store it as our current population
-        population = temp
+        popu = temp
 
         # slicing
         slice_i += 1
         if slice_i % (nb_iter/nb_slices) == 0:
-            best_cost = eval_sol_bis(graph, terms, population[0])
+            best_cost = eval_sol_bis(graph, terms, popu[0])
             slices.append(best_cost)
 
-    return eval_sol_bis(graph, terms, population[0]), population[0], slices
+    best_cost = eval_sol_bis(graph, terms, popu[0])
+    best_sol = popu[0]
+    return best_cost, best_sol, slices
 
 def algo_genetique_sommet(graph, terms, nb_enfants=16, nb_iter=2000,
                           nb_slices=10):
@@ -834,7 +835,7 @@ def voisinage(sol):
     '''
 
     # We change a random bit
-    random_n = np.random.randint(0, len(sol))
+    random_n = int(np.random.randint(0, len(sol)))
     temporary_sol = sol.copy()
     temporary_sol[random_n] = (temporary_sol[random_n]+1) % 2
 
@@ -861,7 +862,7 @@ def voisinage_sommet(sol, terms):
 
 if __name__ == "__main__":
     start = time.perf_counter()
-    with open("results.txt", "w", encoding="utf8") as file:
+    with open("results2.txt", "w", encoding="utf8") as file:
         for i in range(1, 19):
             STEIN_FILE = ""
             if i < 10:
@@ -890,70 +891,60 @@ if __name__ == "__main__":
 
                 # évaluation de la solution
                 file.write(STEIN_FILE + " Approx steiner : " +
-                           str(eval_sol(graph, terms, sol)))
+                           str(eval_sol(graph, terms, sol)) + "\n")
 
                 cost, sol2, slices = algo_tabu(graph, terms, nb_iter=20000)
                 file.write(STEIN_FILE + " Algo tabu arêtes : " + str(cost) +
                            " nb_iter = 20000\n")
-
                 cost, sol2, slices = algo_tabu_sommet(graph, terms,
                                                       nb_iter=20000)
                 file.write(STEIN_FILE + " Algo tabu sommets : " + str(cost) +
                            " nb_iter = 20000\n")
-
                 cost, sol2, slices = algo_genetique(graph, terms, nb_enfants=16,
                                                     nb_iter=1000)
                 file.write(STEIN_FILE + " Algo génétique arêtes:" + str(cost) +
-                      " nb_iter = 1000, nb_enfants=16\n")
-
+                           " nb_iter = 1000, nb_enfants=16\n")
                 cost, sol2, slices = algo_genetique_sommet(graph, terms,
                                                            nb_enfants=16,
                                                            nb_iter=1000)
                 file.write(STEIN_FILE + " Algo génétique sommets: " +
                            str(cost) + " nb_iter = 1000, nb_enfants=16\n")
-
                 cost, sol2, slices = algo_recuit(graph, terms, temperature=10,
                                                  nb_iter=20000,
                                                  type="exponential")
                 file.write(STEIN_FILE + " Algo recuit arêtes exponential : " +
                            str(cost) + " nb_iter = 20000, temperature = 10\n")
-
                 cost, sol2, slices = algo_recuit(graph, terms, temperature=10,
                                                  nb_iter=20000, type="linear")
                 file.write(STEIN_FILE + " Algo recuit arêtes linear : " +
                            str(cost) + " nb_iter = 20000, temperature = 10\n")
-
                 cost, sol2, slices = algo_recuit_sommet(graph, terms,
                                                         temperature=10,
                                                         nb_iter=20000,
                                                         type="exponential")
                 file.write(STEIN_FILE + " Algo recuit sommets exp : " +
                            str(cost) + " nb_iter = 20000, temperature = 10\n")
-
                 cost, sol2, slices = algo_recuit_sommet(graph, terms,
                                                         temperature=10,
                                                         nb_iter=20000,
                                                         type="linear")
                 file.write(STEIN_FILE + " Algo recuit sommets lin : " +
                            str(cost) + " nb_iter = 20000, temperature = 10\n")
-
                 cost, sol2, slices = algo_recuit_sommet_tabu(graph, terms,
                                                              temperature=10,
                                                              nb_iter=20000,
                                                              type="linear")
                 file.write(STEIN_FILE + " Algo recuit sommets lin + tabu: " +
                            str(cost) + " nb_iter = 20000, temperature = 10\n")
-
                 cost, sol2, slices = algo_recuit_sommet_tabu(graph, terms,
                                                              temperature=10,
                                                              nb_iter=20000,
                                                              type="exponential")
                 file.write(STEIN_FILE + " Algo recuit sommets exp + tabu: " +
                            str(cost) + " nb_iter = 20000, temperature = 10\n")
-
                 file.write('\n')
                 end = time.perf_counter()
-                print(end - start)
+                print(STEIN_FILE, end - start)
 
             terms.clear()
             graph.clear()
